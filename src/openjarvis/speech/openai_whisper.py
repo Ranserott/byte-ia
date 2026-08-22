@@ -8,6 +8,10 @@ from typing import List, Optional
 
 from openjarvis.core.registry import SpeechRegistry
 from openjarvis.speech._stubs import SpeechBackend, TranscriptionResult
+from openjarvis.speech.language import (
+    DEFAULT_LANGUAGE,
+    detect_language_from_text,
+)
 
 try:
     from openai import OpenAI
@@ -21,8 +25,9 @@ class OpenAIWhisperBackend(SpeechBackend):
 
     backend_id = "openai"
 
-    def __init__(self, api_key: Optional[str] = None) -> None:
+    def __init__(self, api_key: Optional[str] = None, default_language: str = DEFAULT_LANGUAGE) -> None:
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        self._default_language = default_language
         self._client: Optional[OpenAI] = None
         if self._api_key and OpenAI is not None:
             self._client = OpenAI(api_key=self._api_key)
@@ -43,15 +48,27 @@ class OpenAIWhisperBackend(SpeechBackend):
         audio_file.name = f"audio.{ext}"
 
         kwargs: dict = {"model": "whisper-1", "file": audio_file}
+        # If the caller passed a language we forward it directly. Otherwise
+        # we let Whisper auto-detect and surface its detection via
+        # ``response.language``. ``verbose_json`` is already requested
+        # below so we always get a language back from the API.
         if language:
             kwargs["language"] = language
         kwargs["response_format"] = "verbose_json"
 
         response = self._client.audio.transcriptions.create(**kwargs)
 
+        text = getattr(response, "text", str(response))
+        api_language = getattr(response, "language", None)
+        # Defensive fallback: if the API omitted the language, run our
+        # heuristic on the transcribed text so downstream TTS can pick
+        # the right voice.
+        if not api_language and text:
+            api_language = detect_language_from_text(text).code
+
         return TranscriptionResult(
-            text=getattr(response, "text", str(response)),
-            language=getattr(response, "language", None),
+            text=text,
+            language=api_language,
             confidence=None,
             duration_seconds=getattr(response, "duration", 0.0),
             segments=[],

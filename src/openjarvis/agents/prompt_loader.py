@@ -28,14 +28,66 @@ def _openjarvis_home() -> Path:
     return get_config_dir()
 
 
-def load_system_prompt_override(agent_name: str) -> str | None:
+def load_system_prompt_override(agent_name: str, language: str | None = None) -> str | None:
     """Return the override prompt for *agent_name*, or ``None``.
 
-    Looks for ``$OPENJARVIS_HOME/agents/<agent_name>/system_prompt.md``.
-    ``OPENJARVIS_HOME`` defaults to ``~/.openjarvis`` when unset.
+    Resolution order:
+
+    1. ``$OPENJARVIS_HOME/agents/<agent_name>/system_prompt.<lang>.md``
+       (e.g. ``system_prompt.es.md``) — language-specific override.
+    2. ``$OPENJARVIS_HOME/agents/<agent_name>/system_prompt.md`` — default.
+    3. ``None`` if neither exists.
+
+    ``language`` defaults to the project's :data:`DEFAULT_LANGUAGE`
+    (``"es"``) when omitted. ``OPENJARVIS_HOME`` defaults to
+    ``~/.openjarvis`` when unset.
     """
+    from openjarvis.speech.language import DEFAULT_LANGUAGE
+
     home = _openjarvis_home()
-    prompt_path = home / "agents" / agent_name / "system_prompt.md"
+    agent_dir = home / "agents" / agent_name
+
+    if language:
+        lang_path = agent_dir / f"system_prompt.{language}.md"
+        if lang_path.exists():
+            try:
+                content = lang_path.read_text(encoding="utf-8")
+                logger.info(
+                    "Loaded %s system prompt for %s from %s",
+                    language,
+                    agent_name,
+                    lang_path,
+                )
+                return content
+            except Exception:
+                logger.warning(
+                    "Failed to read language-specific system prompt at %s",
+                    lang_path,
+                    exc_info=True,
+                )
+
+    # Fall back to the default language if nothing was found for the
+    # requested language (still preferring a per-language file).
+    if language != DEFAULT_LANGUAGE:
+        lang_path = agent_dir / f"system_prompt.{DEFAULT_LANGUAGE}.md"
+        if lang_path.exists():
+            try:
+                content = lang_path.read_text(encoding="utf-8")
+                logger.info(
+                    "Loaded fallback %s system prompt for %s from %s",
+                    DEFAULT_LANGUAGE,
+                    agent_name,
+                    lang_path,
+                )
+                return content
+            except Exception:
+                logger.warning(
+                    "Failed to read fallback system prompt at %s",
+                    lang_path,
+                    exc_info=True,
+                )
+
+    prompt_path = agent_dir / "system_prompt.md"
     if not prompt_path.exists():
         return None
     try:
@@ -53,32 +105,56 @@ def load_system_prompt_override(agent_name: str) -> str | None:
 
 def load_few_shot_exemplars(
     agent_name: str,
+    language: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return few-shot exemplars for *agent_name*, or empty list.
 
-    Looks for ``$OPENJARVIS_HOME/agents/<agent_name>/few_shot.json``.
+    Looks for (in priority order):
+
+    1. ``$OPENJARVIS_HOME/agents/<agent_name>/few_shot.<lang>.json``
+    2. ``$OPENJARVIS_HOME/agents/<agent_name>/few_shot.json``
+
     Expected format: ``[{"input": "Q", "output": "A"}, ...]``.
     """
+    from openjarvis.speech.language import DEFAULT_LANGUAGE
+
     home = _openjarvis_home()
-    fs_path = home / "agents" / agent_name / "few_shot.json"
+    agent_dir = home / "agents" / agent_name
+
+    if language:
+        lang_path = agent_dir / f"few_shot.{language}.json"
+        if lang_path.exists():
+            data = _read_json_list(lang_path)
+            if data is not None:
+                return data
+
+    if language != DEFAULT_LANGUAGE:
+        lang_path = agent_dir / f"few_shot.{DEFAULT_LANGUAGE}.json"
+        if lang_path.exists():
+            data = _read_json_list(lang_path)
+            if data is not None:
+                return data
+
+    fs_path = agent_dir / "few_shot.json"
     if not fs_path.exists():
         return []
+    data = _read_json_list(fs_path)
+    return data or []
+
+
+def _read_json_list(path: Path) -> list[dict[str, Any]] | None:
+    """Read a JSON list from *path*, returning ``None`` on any failure."""
     try:
-        data = json.loads(fs_path.read_text(encoding="utf-8"))
-        if not isinstance(data, list):
-            logger.warning("few_shot.json for %s is not a list", agent_name)
-            return []
-        logger.info(
-            "Loaded %d few-shot exemplars for %s from %s",
-            len(data),
-            agent_name,
-            fs_path,
-        )
-        return data
+        data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         logger.warning(
-            "Failed to read few-shot exemplars at %s",
-            fs_path,
-            exc_info=True,
+            "Failed to read few-shot exemplars at %s", path, exc_info=True
         )
-        return []
+        return None
+    if not isinstance(data, list):
+        logger.warning("few_shot file at %s is not a list", path)
+        return None
+    logger.info(
+        "Loaded %d few-shot exemplars from %s", len(data), path
+    )
+    return data

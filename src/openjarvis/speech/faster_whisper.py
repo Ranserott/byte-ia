@@ -9,6 +9,11 @@ from typing import List, Optional
 
 from openjarvis.core.registry import SpeechRegistry
 from openjarvis.speech._stubs import Segment, SpeechBackend, TranscriptionResult
+from openjarvis.speech.language import (
+    DEFAULT_LANGUAGE,
+    detect_language_from_text,
+    resolve_stt_language,
+)
 
 try:
     from faster_whisper import WhisperModel
@@ -34,10 +39,12 @@ class FasterWhisperBackend(SpeechBackend):
         model_size: str = "base",
         device: str = "auto",
         compute_type: str = "float16",
+        default_language: str = DEFAULT_LANGUAGE,
     ) -> None:
         self._model_size = model_size
         self._device = device
         self._compute_type = compute_type
+        self._default_language = default_language
         self._model: Optional[WhisperModel] = None
         self._last_error: Optional[str] = None
 
@@ -117,6 +124,11 @@ class FasterWhisperBackend(SpeechBackend):
                     tmp.write(audio)
 
                 kwargs = {}
+                # If the caller passed a language, use it directly. Otherwise
+                # let faster-whisper auto-detect (no `language` kwarg).
+                # The detected language is exposed via ``info.language`` and
+                # we re-run :func:`detect_language_from_text` on the
+                # transcript so the TTS side can match.
                 if language:
                     kwargs["language"] = language
 
@@ -147,10 +159,17 @@ class FasterWhisperBackend(SpeechBackend):
             for seg in segments_list
         ]
 
+        # Whisper's ``info.language`` is the most reliable signal (it's
+        # the model's own posterior). Fall back to our heuristic only
+        # when info didn't expose one.
+        detected = getattr(info, "language", None) or None
+        if not detected and text:
+            detected = detect_language_from_text(text).code
+
         self._last_error = None
         return TranscriptionResult(
             text=text,
-            language=getattr(info, "language", None),
+            language=detected,
             confidence=getattr(info, "language_probability", None),
             duration_seconds=getattr(info, "duration", 0.0),
             segments=segments,
