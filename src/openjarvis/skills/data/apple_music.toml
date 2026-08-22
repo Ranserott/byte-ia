@@ -1,0 +1,31 @@
+[skill]
+name = "apple-music"
+description = "Control Apple Music (play, pause, next, previous) from voice or chat commands via AppleScript. No configuration required."
+version = "1.0.0"
+author = "Platanito"
+platform = ["macos"]
+
+[skill.metadata.openjarvis.triggers]
+phrases = [
+    "apple music",
+    "musica",
+    "reproduce",
+    "pausa",
+    "siguiente cancion",
+    "anterior",
+]
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Identify the Apple Music action. Available: play (query), pause, resume, next_track, previous_track, volume (percent 0-100). Intent: {intent}"}'
+output_key = "intent_parsed"
+
+[[skill.steps]]
+tool_name = "shell_exec"
+arguments_template = '{"command": "python -c \"from openjarvis.skills.apple_music.actions import run_action; import json; print(json.dumps(run_action({intent_parsed})))\"", "timeout": 10}'
+output_key = "action_result"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Surface the Apple Music action result in Spanish. Output: {action_result}. Original request: {intent}"}'
+output_key = "response"

@@ -1,0 +1,30 @@
+[skill]
+name = "erp-cafeteria"
+description = "Control the Cafetería ERP (http://localhost:3000) — sales, products, tables, attendance"
+version = "1.0.0"
+author = "Platanito"
+
+[skill.metadata.openjarvis.triggers]
+phrases = [
+    "abrir erp",
+    "erp",
+    "cafetería",
+    "ventas de hoy",
+    "cuánto vendimos",
+    "estado de las mesas",
+    "reporte del día",
+]
+
+[skill.metadata.openjarvis.targets]
+base_url = "http://localhost:3000"
+admin_user = "admin"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Identify which ERP action the user is asking for. Intent: {intent}. Available actions: ventas_hoy (sales today), estado_mesas (table status), asistencia_hoy (attendance), abrir_reportes (open reports), abrir_mesas (open tables view), abrir_admin (open admin dashboard)."}'
+output_key = "intent_parsed"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Build the response by calling the matching ERP endpoint and summarizing for the user. ERP base URL: http://localhost:3000. Intent: {intent_parsed}. Original request: {intent}"}'
+output_key = "response"

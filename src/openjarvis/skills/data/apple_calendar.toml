@@ -1,0 +1,31 @@
+[skill]
+name = "apple-calendar"
+description = "Read Apple Calendar events for today or tomorrow from voice or chat commands via AppleScript."
+version = "1.0.0"
+author = "Platanito"
+platform = ["macos"]
+
+[skill.metadata.openjarvis.triggers]
+phrases = [
+    "calendario",
+    "eventos",
+    "agenda",
+    "que tengo hoy",
+    "que tengo mañana",
+    "reuniones",
+]
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Identify whether the user wants today or tomorrow. Available actions: eventos_hoy, eventos_manana. Intent: {intent}"}'
+output_key = "intent_parsed"
+
+[[skill.steps]]
+tool_name = "shell_exec"
+arguments_template = '{"command": "python -c \"from openjarvis.skills.apple_calendar.actions import run_action; import json; print(json.dumps(run_action({intent_parsed})))\"", "timeout": 10}'
+output_key = "calendar_result"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Format the calendar events as a clean Spanish summary. Output: {calendar_result}. Original request: {intent}"}'
+output_key = "response"
