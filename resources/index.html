@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Byte IA — Tu Asistente Personal</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg-card: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e8e8f0;
+      --text-dim: #8888a0;
+      --accent: #f54a00;
+      --accent-glow: rgba(245, 74, 0, 0.4);
+      --success: #00a63e;
+      --error: #e7000b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px 24px;
+      background:
+        radial-gradient(ellipse at top, rgba(245, 74, 0, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom, rgba(245, 74, 0, 0.04) 0%, transparent 50%),
+        var(--bg);
+    }
+
+    /* === HEADER === */
+    .header {
+      text-align: center;
+      width: 100%;
+    }
+
+    .brand {
+      font-size: 14px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #f54a00 0%, #ff7733 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* === ORB === */
+    .orb-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+    }
+
+    .orb {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent) 0%, var(--accent-glow) 50%, transparent 80%);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .orb:hover { transform: scale(1.05); }
+    .orb:active { transform: scale(0.95); }
+
+    .orb.listening {
+      animation: pulse-listening 1.2s ease-in-out infinite;
+      background: radial-gradient(circle, #06b6d4 0%, rgba(6, 182, 212, 0.4) 50%, transparent 80%);
+    }
+
+    .orb.thinking {
+      animation: pulse-thinking 0.8s ease-in-out infinite;
+      background: radial-gradient(circle, #eab308 0%, rgba(234, 179, 8, 0.4) 50%, transparent 80%);
+    }
+
+    .orb.speaking {
+      animation: pulse-speaking 0.6s ease-in-out infinite;
+      background: radial-gradient(circle, #10b981 0%, rgba(16, 185, 129, 0.4) 50%, transparent 80%);
+    }
+
+    @keyframes pulse-listening {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+    @keyframes pulse-thinking {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.05) rotate(180deg); }
+    }
+    @keyframes pulse-speaking {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .orb-icon {
+      font-size: 80px;
+      color: rgba(255, 255, 255, 0.9);
+      filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));
+    }
+
+    .status-text {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* === TRANSCRIPT === */
+    .transcript {
+      width: 100%;
+      max-width: 600px;
+      min-height: 80px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .transcript:empty::before {
+      content: "Tus conversaciones aparecerán aquí...";
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    .message {
+      margin-bottom: 12px;
+    }
+
+    .message.user {
+      color: var(--accent);
+    }
+
+    .message.jarvis {
+      color: var(--text);
+    }
+
+    .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    /* === CONFIG PANEL === */
+    .config-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .config-toggle:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .config-panel {
+      position: fixed;
+      top: 60px;
+      right: 16px;
+      width: 360px;
+      max-width: calc(100vw - 32px);
+      background: rgba(20, 20, 30, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(20px);
+      display: none;
+      z-index: 100;
+    }
+
+    .config-panel.open { display: block; }
+
+    .config-panel h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .save-btn:hover { background: #ff6633; }
+
+    /* === COMMANDS === */
+    .commands {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .cmd-btn {
+      padding: 8px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: var(--text-dim);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cmd-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <!-- Botón de config -->
+  <button class="config-toggle" id="configToggle" title="Configuración">⚙</button>
+
+  <!-- Panel de configuración -->
+  <div class="config-panel" id="configPanel">
+    <h3>Configuración</h3>
+    <div class="form-group">
+      <label>API Key (MiniMax)</label>
+      <input type="password" id="apiKey" placeholder="sk-..." />
+    </div>
+    <div class="form-group">
+      <label>Modelo</label>
+      <select id="model">
+        <option value="MiniMax-Text-01">MiniMax-Text-01</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Voz (TTS)</label>
+      <select id="voice">
+        <option value="Monica">Monica (es-MX, recomendada)</option>
+        <option value="Paulina">Paulina (es-MX)</option>
+        <option value="Juan">Juan (es-ES)</option>
+        <option value="Diego">Diego (es-AR)</option>
+        <option value="auto">Auto (sistema)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>System Prompt</label>
+      <input type="text" id="systemPrompt" value="Eres Byte IA, un asistente personal estilo JARVIS. Hablas en español, con tono profesional pero amigable, respuestas concisas. Usas humor sutil. Siempre dices 'señor' o 'señora'." />
+    </div>
+    <button class="save-btn" id="saveBtn">💾 Guardar</button>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">Byte IA</div>
+    <h1>Asistente Personal</h1>
+    <div class="subtitle" id="subtitle">Toca el círculo para hablar</div>
+  </div>
+
+  <!-- Orb central -->
+  <div class="orb-container">
+    <div class="orb" id="orb">
+      <span class="orb-icon">🎙</span>
+      <div class="status-text" id="statusText">Inactivo</div>
+    </div>
+  </div>
+
+  <!-- Transcript -->
+  <div class="transcript" id="transcript"></div>
+
+  <!-- Quick commands -->
+  <div class="commands">
+    <button class="cmd-btn" data-cmd="hola">👋 Hola</button>
+    <button class="cmd-btn" data-cmd="qué hora es">🕐 Hora</button>
+    <button class="cmd-btn" data-cmd="abrir youtube">📺 YouTube</button>
+    <button class="cmd-btn" data-cmd="cuéntame un chiste">😄 Chiste</button>
+    <button class="cmd-btn" data-cmd="ayuda">❓ Ayuda</button>
+  </div>
+
+  <script>
+    // === STATE ===
+    const state = {
+      apiKey: localStorage.getItem("byteia:apiKey") || "",
+      model: localStorage.getItem("byteia:model") || "MiniMax-Text-01",
+      voice: localStorage.getItem("byteia:voice") || "Monica",
+      systemPrompt: localStorage.getItem("byteia:systemPrompt") || "Eres Byte IA, un asistente personal estilo JARVIS. Hablas en español.",
+      isListening: false,
+      isSpeaking: false,
+      recognition: null,
+      synthesis: null,
+    };
+
+    // === DOM ===
+    const orb = document.getElementById("orb");
+    const statusText = document.getElementById("statusText");
+    const transcript = document.getElementById("transcript");
+    const subtitle = document.getElementById("subtitle");
+
+    // === CONFIG ===
+    const apiKeyInput = document.getElementById("apiKey");
+    const modelInput = document.getElementById("model");
+    const voiceInput = document.getElementById("voice");
+    const systemPromptInput = document.getElementById("systemPrompt");
+    const saveBtn = document.getElementById("saveBtn");
+    const configToggle = document.getElementById("configToggle");
+    const configPanel = document.getElementById("configPanel");
+
+    apiKeyInput.value = state.apiKey;
+    modelInput.value = state.model;
+    voiceInput.value = state.voice;
+    systemPromptInput.value = state.systemPrompt;
+
+    configToggle.onclick = () => {
+      configPanel.classList.toggle("open");
+    };
+
+    saveBtn.onclick = () => {
+      state.apiKey = apiKeyInput.value.trim();
+      state.model = modelInput.value;
+      state.voice = voiceInput.value;
+      state.systemPrompt = systemPromptInput.value;
+      localStorage.setItem("byteia:apiKey", state.apiKey);
+      localStorage.setItem("byteia:model", state.model);
+      localStorage.setItem("byteia:voice", state.voice);
+      localStorage.setItem("byteia:systemPrompt", state.systemPrompt);
+      configPanel.classList.remove("open");
+      addMessage("jarvis", "✓ Configuración guardada");
+    };
+
+    // === TRANSCRIPT ===
+    function addMessage(role, text) {
+      const div = document.createElement("div");
+      div.className = `message ${role}`;
+      const label = role === "user" ? "Tú" : "Byte";
+      div.innerHTML = `<span class="label">${label}</span>${text}`;
+      transcript.appendChild(div);
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    // === STATE MANAGEMENT ===
+    function setState(newState) {
+      orb.classList.remove("listening", "thinking", "speaking");
+      if (newState === "listening") {
+        orb.classList.add("listening");
+        statusText.textContent = "Escuchando...";
+      } else if (newState === "thinking") {
+        orb.classList.add("thinking");
+        statusText.textContent = "Pensando...";
+      } else if (newState === "speaking") {
+        orb.classList.add("speaking");
+        statusText.textContent = "Hablando...";
+      } else {
+        statusText.textContent = "Toca el círculo para hablar";
+      }
+    }
+
+    // === STT: WEB SPEECH API ===
+    function initSTT() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        addMessage("jarvis", "❌ Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.");
+        return null;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = "es-ES";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        addMessage("user", text);
+        processCommand(text);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("STT error:", event.error);
+        setState("idle");
+        if (event.error !== "aborted" && event.error !== "no-speech") {
+          addMessage("jarvis", `Error de voz: ${event.error}`);
+        }
+      };
+
+      recognition.onend = () => {
+        if (state.isListening) {
+          setState("idle");
+          state.isListening = false;
+        }
+      };
+
+      return recognition;
+    }
+
+    function startListening() {
+      if (state.isListening || state.isSpeaking) return;
+
+      if (!state.recognition) {
+        state.recognition = initSTT();
+        if (!state.recognition) return;
+      }
+
+      try {
+        state.recognition.start();
+        state.isListening = true;
+        setState("listening");
+      } catch (e) {
+        console.error("Failed to start:", e);
+        setState("idle");
+      }
+    }
+
+    function stopListening() {
+      if (state.recognition && state.isListening) {
+        state.recognition.stop();
+        state.isListening = false;
+        setState("idle");
+      }
+    }
+
+    // === TTS: macOS SAY via shell ===
+    async function speak(text) {
+      state.isSpeaking = true;
+      setState("speaking");
+
+      // Llamar a la app nativa (byte-ia-tts helper) via custom protocol
+      // o usar Web Speech API como fallback
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.tts) {
+        // App nativa
+        window.webkit.messageHandlers.tts.postMessage({ text, voice: state.voice });
+        return;
+      }
+
+      // Fallback: Web Speech API
+      if (!state.synthesis) {
+        state.synthesis = window.speechSynthesis;
+      }
+
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "es-ES";
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
+
+      // Buscar voz en español
+      const voices = state.synthesis.getVoices();
+      const esVoice = voices.find((v) => v.lang.startsWith("es")) || voices[0];
+      if (esVoice) utter.voice = esVoice;
+
+      utter.onend = () => {
+        state.isSpeaking = false;
+        setState("idle");
+      };
+      utter.onerror = () => {
+        state.isSpeaking = false;
+        setState("idle");
+      };
+
+      state.synthesis.speak(utter);
+    }
+
+    // === LLM: MiniMax API (compatible OpenAI) ===
+    async function callLLM(userMessage) {
+      if (!state.apiKey) {
+        addMessage("jarvis", "⚠️ Configura tu API key primero. Click en ⚙ arriba a la derecha.");
+        return null;
+      }
+
+      setState("thinking");
+
+      try {
+        const response = await fetch("https://api.MiniMax.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${state.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: state.model,
+            messages: [
+              { role: "system", content: state.systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          throw new Error(`API error: ${response.status} - ${err}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+      } catch (e) {
+        console.error("LLM error:", e);
+        return null;
+      }
+    }
+
+    // === PROCESS COMMAND ===
+    async function processCommand(text) {
+      const lower = text.toLowerCase().trim();
+
+      // Comandos locales (instantáneos)
+      if (lower.includes("abrir youtube")) {
+        addMessage("jarvis", "Abriendo YouTube...");
+        window.open("https://youtube.com", "_blank");
+        return;
+      }
+
+      if (lower.includes("qué hora es") || lower.includes("que hora es")) {
+        const time = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+        addMessage("jarvis", `Son las ${time}, señor.`);
+        await speak(`Son las ${time}, señor.`);
+        return;
+      }
+
+      if (lower === "hola" || lower === "hola jarvis" || lower === "buenos días") {
+        const greeting = "Hola, señor. ¿En qué puedo ayudarle?";
+        addMessage("jarvis", greeting);
+        await speak(greeting);
+        return;
+      }
+
+      if (lower.includes("ayuda") || lower === "qué puedes hacer") {
+        const helpText = "Puedo responder preguntas, abrir páginas web, controlar la app, contar chistes, y más. Solo pregunte.";
+        addMessage("jarvis", helpText);
+        await speak(helpText);
+        return;
+      }
+
+      // LLM
+      const response = await callLLM(text);
+      if (response) {
+        addMessage("jarvis", response);
+        await speak(response);
+      } else {
+        const error = "Disculpe, no pude procesar su solicitud. Verifique su API key.";
+        addMessage("jarvis", error);
+        await speak(error);
+      }
+    }
+
+    // === EVENTOS ===
+    orb.addEventListener("click", () => {
+      if (state.isSpeaking) {
+        // Si está hablando, no hacer nada
+        return;
+      }
+      if (state.isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+
+    // Quick commands
+    document.querySelectorAll(".cmd-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const cmd = btn.getAttribute("data-cmd");
+        addMessage("user", cmd);
+        processCommand(cmd);
+      });
+    });
+
+    // Atajo de teclado: barra espaciadora
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        if (state.isListening) {
+          stopListening();
+        } else {
+          startListening();
+        }
+      }
+    });
+
+    // Init
+    setState("idle");
+    addMessage("jarvis", "Hola, señor. Byte IA está listo. Toca el círculo para hablar.");
+  </script>
+</body>
+</html>
