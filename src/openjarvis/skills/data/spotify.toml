@@ -1,0 +1,34 @@
+[skill]
+name = "spotify"
+description = "Control Spotify (play, pause, next, volume, search) from voice or chat commands via AppleScript. No OAuth required."
+version = "1.0.0"
+author = "Platanito"
+platform = ["macos"]
+
+[skill.metadata.openjarvis.triggers]
+phrases = [
+    "spotify",
+    "reproduce",
+    "pausa",
+    "siguiente cancion",
+    "volumen",
+    "musica",
+]
+
+[skill.metadata.openjarvis.requires]
+optional = ["spotipy"]
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Identify the Spotify action the user is asking for. Available actions: play (search query), pause, next_track, previous_track, volume (percent 0-100). Intent: {intent}"}'
+output_key = "intent_parsed"
+
+[[skill.steps]]
+tool_name = "shell_exec"
+arguments_template = '{"command": "python -c \"from openjarvis.skills.spotify.actions import run_action; import json; print(json.dumps(run_action({intent_parsed})))\"", "timeout": 10}'
+output_key = "action_result"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Surface the action result to the user in Spanish. Output: {action_result}. Original request: {intent}"}'
+output_key = "response"
