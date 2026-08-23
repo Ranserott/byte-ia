@@ -1009,7 +1009,7 @@
         ];
 
         // Primera llamada: con tools disponibles
-        const response = await fetch("https://api.MiniMax.com/v1/chat/completions", {
+        const response = await fetch("https://api.minimaxi.chat/v1/text/chatcompletion_v2", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1055,7 +1055,7 @@
           }
 
           // Segunda llamada para que el LLM genere respuesta final con resultados
-          const finalResponse = await fetch("https://api.MiniMax.com/v1/chat/completions", {
+          const finalResponse = await fetch("https://api.minimaxi.chat/v1/text/chatcompletion_v2", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
