@@ -130,9 +130,35 @@ echo "   Bundle: $(du -sh "$APP_DIR" | cut -f1)"
 # PASO 4: Code sign + DMG
 # ============================================
 echo ""
-echo "🔏 Firmando (ad-hoc)..."
-codesign --force --deep --sign - "$APP_DIR" 2>&1 | tail -2 || true
+echo "🔏 Firmando..."
 
+# Intentar múltiples métodos de firma
+SIGNED=false
+
+# Método 1: Developer ID si existe (con timeout para no colgarse)
+DEV_ID=""
+if command -v security &> /dev/null; then
+    DEV_ID=$(security find-identity -v -p codesigning 2>/dev/null < /dev/null | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}' || echo "")
+fi
+if [ -n "$DEV_ID" ]; then
+    echo "   Usando Developer ID: $DEV_ID"
+    if codesign --force --deep --sign "$DEV_ID" --options runtime "$APP_DIR" 2>&1 | tail -3; then
+        SIGNED=true
+    fi
+fi
+
+# Método 2: Ad-hoc si no hay Developer ID
+if [ "$SIGNED" = false ]; then
+    echo "   Usando firma ad-hoc (sin Apple Developer ID)"
+    codesign --force --deep --sign - "$APP_DIR" 2>&1 | tail -2 || true
+    SIGNED=true
+fi
+
+# Verificar firma
+echo "   Verificando firma..."
+codesign --verify --verbose "$APP_DIR" 2>&1 | head -3 || true
+
+echo "   ✅ Listo"
 echo ""
 echo "💿 [4/4] Creando .dmg..."
 
